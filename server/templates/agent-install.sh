@@ -195,18 +195,10 @@ manifest_value() {
   local platform="$2"
   local key="$3"
 
-  awk -v platform="\"${platform}\"" -v key="\"${key}\"" '
-    $0 ~ platform { in_platform=1; next }
-    in_platform && $0 ~ /^[[:space:]]*}/ { exit }
-    in_platform && $0 ~ key {
-      line=$0
-      sub(/^[^:]*:[[:space:]]*/, "", line)
-      sub(/[,\r]*$/, "", line)
-      gsub(/^"|"$/, "", line)
-      print line
-      exit
-    }
-  ' "${manifest_path}"
+  # 从紧凑单行 JSON 中提取值，兼容 pretty-print 多行输出。
+  # 在 "PLATFORM":{...} 块内匹配 "KEY":VALUE，VALUE 可以是字符串、数字或布尔值。
+  sed -n 's/.*"'"${platform}"'":{[^}]*"'"${key}"'": *\([^,}]*\).*/\1/p' "${manifest_path}" \
+    | sed 's/^"//; s/"$//'
 }
 
 validate_binary_name() {
