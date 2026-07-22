@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - dev
-      - niyy
     paths:
       - 'agent/**'
       - 'server/templates/agent-install.sh'
@@ -17,8 +16,6 @@ on:
   pull_request:
     branches:
       - main
-      - dev
-      - niyy
     paths:
       - 'agent/**'
       - 'server/templates/agent-install.sh'
@@ -140,31 +137,24 @@ jobs:
           VERSION="${{ needs.version.outputs.version }}"
           mkdir -p agent/release
 
-          # 文件名必须符合 install.sh 的 validate_binary_name 规则：incudal-agent-linux-amd64 / arm64
-          cp agent/dist/incudal-agent-linux-amd64   "agent/release/incudal-agent-linux-amd64"
-          cp agent/dist/incudal-agent-linux-arm64   "agent/release/incudal-agent-linux-arm64"
-
-          # 为每个二进制生成 sha256 校验文件，方便面板生成 manifest
-          sha256sum "agent/release/incudal-agent-linux-amd64" | cut -d' ' -f1 > "agent/release/incudal-agent-linux-amd64.sha256"
-          sha256sum "agent/release/incudal-agent-linux-arm64" | cut -d' ' -f1 > "agent/release/incudal-agent-linux-arm64.sha256"
+          cp agent/dist/incudal-agent-linux-amd64 "agent/release/incudal-agent-x86_64-${VERSION}"
+          cp agent/dist/incudal-agent-linux-arm64 "agent/release/incudal-agent-aarch64-${VERSION}"
 
       - name: Verify release assets
         shell: bash
         run: |
-          test -s "agent/release/incudal-agent-linux-amd64"
-          test -s "agent/release/incudal-agent-linux-arm64"
-          test -s "agent/release/incudal-agent-linux-amd64.sha256"
-          test -s "agent/release/incudal-agent-linux-arm64.sha256"
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          test -s "agent/release/incudal-agent-x86_64-${VERSION}"
+          test -s "agent/release/incudal-agent-aarch64-${VERSION}"
 
       - name: Upload Agent artifacts
         uses: actions/upload-artifact@v4
         with:
           name: incudal-agent-${{ needs.version.outputs.version }}
           path: |
-            agent/release/incudal-agent-linux-amd64
-            agent/release/incudal-agent-linux-arm64
-            agent/release/incudal-agent-linux-amd64.sha256
-            agent/release/incudal-agent-linux-arm64.sha256
+            agent/release/incudal-agent-x86_64-${{ needs.version.outputs.version }}
+            agent/release/incudal-agent-aarch64-${{ needs.version.outputs.version }}
           retention-days: 30
 
   release-agent:
@@ -191,10 +181,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Incudal Agent ${{ needs.version.outputs.version }}
           files: |
-            agent-release/incudal-agent-linux-amd64
-            agent-release/incudal-agent-linux-arm64
-            agent-release/incudal-agent-linux-amd64.sha256
-            agent-release/incudal-agent-linux-arm64.sha256
+            agent-release/incudal-agent-x86_64-${{ needs.version.outputs.version }}
+            agent-release/incudal-agent-aarch64-${{ needs.version.outputs.version }}
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(needs.version.outputs.version, '-') }}
